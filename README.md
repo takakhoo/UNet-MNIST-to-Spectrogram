@@ -1,9 +1,8 @@
-# ENGS 106 - Final Project: U-Net-Based Spectrogram Generation for Chord Synthesis
+# U-Net-Based Spectrogram Generation for Chord Synthesis
 
 Authors:
-- Harry Leiter (<harry.p.leiter.th@dartmouth.edu>)  
 - Taka Khoo (<matthew.t.khoo.25@dartmouth.edu>)  
-- Doruk Ozel (<doruk.ozel.26@dartmouth.edu>)
+- Harry Leiter (<harry.p.leiter.th@dartmouth.edu>)  
 
 ## Overview
 
