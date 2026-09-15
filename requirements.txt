@@ -1,0 +1,12 @@
+ipython>=8.0
+jupyterlab>=4.0
+matplotlib>=3.8
+numpy>=1.26
+opencv-python>=4.9
+perlin-numpy>=0.0.1
+pillow>=10.0
+pytorch-msssim>=1.0
+scikit-image>=0.22
+scipy>=1.11
+torch>=2.2
+torchvision>=0.17

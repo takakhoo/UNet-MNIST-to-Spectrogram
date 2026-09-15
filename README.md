@@ -1,104 +1,57 @@
-# U-Net-Based Spectrogram Generation for Chord Synthesis
+# U-Net: Handwritten Digits to Musical Spectrograms
 
-Authors:
-- Taka Khoo (<matthew.t.khoo.25@dartmouth.edu>)  
-- Harry Leiter (<harry.p.leiter.th@dartmouth.edu>)  
+A cross-modal deep-learning experiment that maps a 28×28 MNIST/EMNIST digit to
+a 1008×1008 spectrogram representing a major triad. The project combines a
+procedural target-generation pipeline, a PyTorch U-Net, perceptual image losses,
+and waveform synthesis.
 
-## Overview
+## Project idea
 
-This project develops a neural network that transforms a low-resolution digit image (28×28) from the MNIST/EMNIST dataset into a high-resolution spectrogram (1008×1008) that encodes the harmonic structure of a major triad chord. The design leverages an intricate data-conditioning pipeline and a U-Net architecture with skip connections. The goal is to ensure that the resulting spectrogram contains clear vertical frequency bands corresponding to the fundamental, major third, and perfect fifth of a musical chord, thereby producing musically pleasing audio when the spectrogram is converted to sound.
+Digits `0`–`7` stand in for scale degrees. For each input image, the data
+pipeline creates a target spectrogram whose vertical structure encodes a
+fundamental, major third, and perfect fifth. A U-Net then learns the mapping
+while preserving the digit's spatial character through skip connections.
 
-The core components of the project include:
+## Technical highlights
 
-- Data Conditioning Pipeline: 
-  Upscaling the input digit image, applying Gaussian weighting to simulate natural harmonic decay, isolating frequency rows corresponding to the chord’s harmonics, applying Gaussian smearing/smoothing, adding Perlin noise for natural texture, and finally normalizing the target spectrogram.
-  
-- Neural Network Architecture (U-Net): 
-  An encoder–decoder (U-Net) network that learns the mapping from the input digit image to the conditioned spectrogram. Skip connections are incorporated to preserve fine spatial details.
+- Procedural supervision built with resampling, Gaussian decay and smearing,
+  harmonic row selection, and Perlin-noise texture
+- Encoder–decoder model with skip connections and a 1008×1008 output
+- Huber and multi-scale SSIM objectives for pixel and structural fidelity
+- Mixed-precision training and checkpointing in PyTorch
+- Spectrogram-to-waveform synthesis for audible qualitative evaluation
 
-- Loss Functions and Training Strategy: 
-  A combination of pixel-wise loss (Huber loss), structural similarity loss (MS-SSIM), and frequency-domain losses were experimented with. The final model uses a weighted combination of Huber and MS-SSIM loss to enforce both local fidelity and global structure.
+## Quick start
 
-- Audio Synthesis: 
-  The spectrogram is interpreted as a frequency-amplitude mapping to synthesize audio. Each row corresponds to a frequency, and the amplitude is derived from the pixel intensity, generating a stable major triad chord.
+```bash
+git clone https://github.com/takakhoo/UNet-MNIST-to-Spectrogram.git
+cd UNet-MNIST-to-Spectrogram
+python -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
+python -m pip install -r requirements.txt
+jupyter lab UNet_MNIST_to_Spectrogram.ipynb
+```
 
-## Data Preparation
+The committed checkpoint is an interrupted training snapshot and may require
+matching model dimensions. Start with the executed notebook to understand the
+data pipeline before resuming training.
 
-- The project uses the EMNIST dataset (by class). The custom `SpectrogramDataset` filters the dataset based on a set of allowed labels.
-- The target generation pipeline in `utils.py` transforms a digit image into a spectrogram by:
-  - Upscaling (using SciPy’s `resample` function).
-  - Applying one-dimensional and two-dimensional Gaussian filtering:
-  - Isolating rows corresponding to the harmonic frequencies (f0, 1.25f0, 1.5f0) using integer rounding.
-  - Adding Perlin noise to introduce texture.
-  - Final normalization to scale the output spectrogram between 0 and 1.
+## Artifacts
 
-## Neural Network Architecture
+- `UNet_MNIST_to_Spectrogram.ipynb` — complete experiment notebook
+- `Paper MNIST to Chord Spectrogram.pdf` — project report
+- `Final Presentation.pptx` — presentation deck
+- `thenumber*.png` / `thenumber*.npy` — conditioning-stage examples
+- `redu_U-Nettttttt_checkpoint_step_156819_INTERRUPTED.pth` — historical
+  checkpoint
+- `Upscaler/` — Real-ESRGAN exploration and model assets
 
-The U-Net model (`SpectrogramGenerator`) is designed with the following stages:
+## Contributors
 
-1. Encoder: Two sequential blocks extract features from the input image
+Taka Khoo, Harry Leiter, and Doruk Ozel developed this project for ENGS 106.
 
-2. Bottleneck: Increases the feature depth to capture latent representations
+## Scope
 
-3. Decoder with Skip Connections:  
-   The decoder upsamples the bottleneck representation and uses skip connections to merge encoder features:
-   - Final upsampling via bilinear interpolation brings the output to \(1008 \times 1008\), followed by a final convolution and activation
-
-   *Skip connections* (i.e., the concatenation of encoder features with decoder features) allow the model to retain spatial detail lost during pooling. This is crucial for generating distinct vertical frequency bands in the spectrogram.
-
-## Loss Functions and Training Strategy
-
-- Loss Components:
-  - Huber Loss: Robust to outliers and combines L1 and L2 properties:
-  - MS-SSIM Loss: This term enforces structural similarity between the predicted and target spectrograms.
-- Combined Loss: The final loss is a weighted combination
-
-- Training Optimizations:
-  - Optimizer: Adam optimizer was used with a learning rate schedule (with occasional “bumps” to escape local minima).
-  - Mixed Precision Training: Implemented via PyTorch’s AMP (`torch.cuda.amp`) to speed up training and maximize GPU usage.
-  - Checkpointing and Logging:  
-    Model checkpoints are saved regularly. Training progress is monitored through visualizations of inputs, targets, and outputs as well as logging of individual loss components.
-
-## Inference and Audio Generation
-
-After training, the model is used for inference:
-1. A new digit image is resized to 28×28, normalized, and passed through the U-Net.
-2. The network outputs a spectrogram  which is normalized.
-3. Audio Synthesis:  
-   Each row of corresponds to a frequency, and the amplitude is derived from the pixel intensity. The final waveform is generated by summing sinusoidal waves
-
-## Experimental Results and Discussion
-
-- Training Observations:  
-  Initial experiments revealed that without skip connections, the output spectrograms were blurry. Adjustments to loss functions (switching between MSE, L1, and Huber) and adding MS-SSIM improved the formation of clear harmonic lines.
-- Challenges: 
-  Exploding gradients and local minima were major challenges. Frequency-domain losses initially caused instability, leading to several iterations of tuning the loss weights and learning rates.
-- Final Performance:  
-  The final model produces spectrograms with distinct vertical lines corresponding to the fundamental and harmonic frequencies of a major triad chord. The generated audio, synthesized from these spectrograms, yields pleasing chord sounds.
-
-## Usage Instructions
-
-1. Training:
-
-   Execute the training notebook or script (e.g., `main.ipynb`). The script will:
-   - Load the EMNIST dataset.
-   - Preprocess the data and generate target spectrograms using the data conditioning pipeline.
-   - Train the U-Net model using a combination of Huber and MS-SSIM losses.
-   - Save model checkpoints and log loss evolution.
-
-2. Inference:
-
-   Use the provided inference script (or notebook cell) to load a trained checkpoint, input a new digit image (e.g., `test.jpg`), and generate:
-   - A spectrogram image.
-   - A corresponding audio file via the `convert_to_wav` function.
-
-3. Evaluation:
-
-   The project logs include loss curves and sample visualizations of the input, target, and output spectrograms for qualitative assessment. Quantitative evaluation is performed using metrics such as MS-SSIM.
-
-## References
-
-1. Ronneberger, O., Fischer, P., & Brox, T. (2015). U-Net: Convolutional Networks for Biomedical Image Segmentation.
-2. Parncutt, R. (1989). Harmony: A Psychoacoustical Approach. Springer.
-3. Perlin, K. (1985). An Image Synthesizer. ACM SIGGRAPH Computer Graphics.
-4. Wang, Z., Simoncelli, E. P., & Bovik, A. C. (2003). Multiscale Structural Similarity for Image Quality Assessment.
+This is a research/course prototype. The audio examples provide qualitative
+evidence; a stronger follow-up would add held-out metrics, deterministic
+training configuration, and a lightweight inference script.
